@@ -1,0 +1,12 @@
+.app-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background-color: #f5f5f5;
+}
+
+.main-content {
+  flex: 1;
+  padding-bottom: 70px; /* BottomNav 높이만큼 패딩 */
+  overflow-y: auto;
+}
