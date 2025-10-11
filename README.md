@@ -44,14 +44,22 @@ npm run preview
 
 ### GitHub Pages 배포
 
+**GitHub Actions를 통한 자동 배포 (권장)**:
+1. GitHub 저장소 Settings > Pages로 이동
+2. Source를 "GitHub Actions"로 설정
+3. `main` 브랜치에 푸시하면 자동으로 배포됩니다
+
+**수동 배포**:
 \`\`\`bash
 # 빌드 및 배포
 npm run deploy
 \`\`\`
 
-또는 GitHub Actions를 통한 자동 배포:
-- \`main\` 브랜치에 푸시하면 자동으로 배포됩니다.
-- GitHub 저장소 Settings > Pages에서 Source를 "GitHub Actions"로 설정해야 합니다.
+**배포 URL**: `https://[username].github.io/subway-tracker/`
+
+**참고**: 
+- HashRouter를 사용하여 GitHub Pages에서 라우팅이 정상 작동합니다
+- URL에 `#`이 포함됩니다 (예: `.../#/history`)
 
 ## 📁 프로젝트 구조
 

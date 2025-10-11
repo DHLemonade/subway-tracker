@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { HashRouter, Routes, Route } from 'react-router-dom';
 import { CheckinPage } from './features/checkin/CheckinPage';
 import { HistoryPage } from './features/history/HistoryPage';
 import { TrainsPage } from './features/trains/TrainsPage';
@@ -8,7 +8,7 @@ import './App.css';
 
 function App() {
   return (
-    <BrowserRouter>
+    <HashRouter>
       <div className="app-container">
         <OnlineStatus />
         <main className="main-content">
@@ -20,7 +20,7 @@ function App() {
         </main>
         <BottomNav />
       </div>
-    </BrowserRouter>
+    </HashRouter>
   );
 }
 
