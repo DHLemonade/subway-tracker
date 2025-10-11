@@ -76,12 +76,22 @@ export function HistoryPage() {
   async function loadPhoto(_photoKey: string) {
     try {
       const photo = await getPhotoByCheckinId(selectedCheckin!.id);
-      if (photo) {
+      if (photo && photo.blob) {
+        console.log('Photo blob info:', {
+          size: photo.blob.size,
+          type: photo.blob.type,
+          checkinId: selectedCheckin!.id
+        });
+        
         const dataUrl = await blobToDataURL(photo.blob);
         setPhotoUrl(dataUrl);
+      } else {
+        console.warn('Photo not found or invalid blob');
+        setPhotoUrl(null);
       }
     } catch (error) {
       console.error('사진 로드 실패:', error);
+      setPhotoUrl(null);
     }
   }
 

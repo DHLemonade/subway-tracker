@@ -57,16 +57,31 @@ export function fileToBlob(file: File): Promise<Blob> {
 // Blob을 Data URL로 변환 (이미지 미리보기용)
 export function blobToDataURL(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
+    // Blob이 유효한지 확인
+    if (!blob || blob.size === 0) {
+      reject(new Error('Invalid or empty blob'));
+      return;
+    }
+
+    // MIME 타입이 없으면 기본값 설정 (사파리 호환성)
+    const blobWithType = blob.type ? blob : new Blob([blob], { type: 'image/jpeg' });
+
     const reader = new FileReader();
+    
     reader.onloadend = () => {
-      if (typeof reader.result === 'string') {
+      if (typeof reader.result === 'string' && reader.result.length > 0) {
         resolve(reader.result);
       } else {
         reject(new Error('Failed to convert blob to data URL'));
       }
     };
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
+    
+    reader.onerror = (error) => {
+      console.error('FileReader error:', error);
+      reject(new Error('FileReader error'));
+    };
+    
+    reader.readAsDataURL(blobWithType);
   });
 }
 

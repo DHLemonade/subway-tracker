@@ -80,11 +80,20 @@ export function CheckinPage() {
         const compressedSize = compressedBlob.size;
         
         console.log(`이미지 압축: ${formatFileSize(originalSize)} → ${formatFileSize(compressedSize)} (${Math.round((1 - compressedSize / originalSize) * 100)}% 절감)`);
+        console.log('Compressed blob info:', {
+          size: compressedBlob.size,
+          type: compressedBlob.type
+        });
+        
+        // MIME 타입이 없으면 명시적으로 설정 (사파리 호환성)
+        const blobWithType = compressedBlob.type 
+          ? compressedBlob 
+          : new Blob([compressedBlob], { type: 'image/jpeg' });
         
         await addPhoto({
           id: checkin.photoKey,
           checkinId: checkin.id,
-          blob: compressedBlob,
+          blob: blobWithType,
           createdAt: now,
         });
       }
