@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { Train, CheckinWithPhoto, Checkin, Platform } from '../../types';
-import { getAllCheckins, getAllTrains, deleteCheckin, getPhotoByCheckinId, deletePhoto, addCheckin, addTrain, updateCheckin, addPhoto } from '../../db/indexedDbClient';
+import { getAllCheckins, getAllTrains, deleteCheckin, getPhotoByCheckinId, getPhotoById, deletePhoto, addCheckin, addTrain, updateCheckin, addPhoto } from '../../db/indexedDbClient';
 import { formatDateTime, blobToDataURL, formatDate, compressImage } from '../../utils/helpers';
 import { exportCheckinsToText, exportCheckinsToReadableText, parseImportText, copyToClipboard, shareViaKakao, downloadAsFile } from '../../utils/exportImport';
 import { CalendarView } from '../../components/CalendarView';
@@ -71,12 +71,19 @@ export function HistoryPage() {
 
   async function loadPhoto(photoKey: string) {
     try {
-      const photo = await getPhotoByCheckinId(selectedCheckin!.id);
-      if (photo) {
+      // photoKey로 직접 사진 가져오기
+      let photo = await getPhotoById(photoKey);
+      
+      // photoKey로 못 찾으면 checkinId로 시도
+      if (!photo && selectedCheckin) {
+        photo = await getPhotoByCheckinId(selectedCheckin.id);
+      }
+      
+      if (photo && photo.blob) {
         const dataUrl = await blobToDataURL(photo.blob);
         setPhotoUrl(dataUrl);
       } else {
-        console.log('사진을 찾을 수 없습니다. photoKey:', photoKey);
+        console.log('사진을 찾을 수 없습니다. photoKey:', photoKey, 'checkinId:', selectedCheckin?.id);
         setPhotoUrl(null);
       }
     } catch (error) {
