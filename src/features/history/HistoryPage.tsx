@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import type { Train, CheckinWithPhoto, Checkin, Platform } from '../../types';
-import { getAllCheckins, getAllTrains, deleteCheckin, getPhotoByCheckinId, getPhotoById, deletePhoto, addCheckin, addTrain, updateCheckin, addPhoto } from '../../db/indexedDbClient';
-import { formatDateTime, blobToDataURL, formatDate, compressImage } from '../../utils/helpers';
+import type { Train, CheckinWithPhoto, Checkin } from '../../types';
+import { getAllCheckins, getAllTrains, deleteCheckin, getPhotoByCheckinId, deletePhoto, addCheckin, addTrain } from '../../db/indexedDbClient';
+import { formatDateTime, blobToDataURL } from '../../utils/helpers';
 import { exportCheckinsToText, exportCheckinsToReadableText, parseImportText, copyToClipboard, shareViaKakao, downloadAsFile } from '../../utils/exportImport';
 import { CalendarView } from '../../components/CalendarView';
 import './HistoryPage.css';
@@ -22,14 +22,6 @@ export function HistoryPage() {
   const [selectedMonth, setSelectedMonth] = useState<Date>(new Date());
   const [showDateDetailModal, setShowDateDetailModal] = useState(false);
   const [selectedDateCheckins, setSelectedDateCheckins] = useState<CheckinWithPhoto[]>([]);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [editingCheckin, setEditingCheckin] = useState<CheckinWithPhoto | null>(null);
-  const [editTrainId, setEditTrainId] = useState<string>('');
-  const [editPlatform, setEditPlatform] = useState<Platform>(1);
-  const [editNotes, setEditNotes] = useState<string>('');
-  const [editDate, setEditDate] = useState<string>('');
-  const [editPhotoFile, setEditPhotoFile] = useState<File | null>(null);
-  const [isUpdating, setIsUpdating] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -69,26 +61,15 @@ export function HistoryPage() {
     }
   }
 
-  async function loadPhoto(photoKey: string) {
+  async function loadPhoto(_photoKey: string) {
     try {
-      // photoKey로 직접 사진 가져오기
-      let photo = await getPhotoById(photoKey);
-      
-      // photoKey로 못 찾으면 checkinId로 시도
-      if (!photo && selectedCheckin) {
-        photo = await getPhotoByCheckinId(selectedCheckin.id);
-      }
-      
-      if (photo && photo.blob) {
+      const photo = await getPhotoByCheckinId(selectedCheckin!.id);
+      if (photo) {
         const dataUrl = await blobToDataURL(photo.blob);
         setPhotoUrl(dataUrl);
-      } else {
-        console.log('사진을 찾을 수 없습니다. photoKey:', photoKey, 'checkinId:', selectedCheckin?.id);
-        setPhotoUrl(null);
       }
     } catch (error) {
       console.error('사진 로드 실패:', error);
-      setPhotoUrl(null);
     }
   }
 
@@ -119,88 +100,6 @@ export function HistoryPage() {
   function closeModal() {
     setSelectedCheckin(null);
     setPhotoUrl(null);
-  }
-
-  function openEditModal(checkin: CheckinWithPhoto) {
-    setEditingCheckin(checkin);
-    setEditTrainId(checkin.trainId);
-    setEditPlatform(checkin.platform);
-    setEditNotes(checkin.notes || '');
-    setEditDate(formatDate(checkin.timestamp));
-    setEditPhotoFile(null);
-    setShowEditModal(true);
-    setSelectedCheckin(null);
-  }
-
-  function closeEditModal() {
-    setShowEditModal(false);
-    setEditingCheckin(null);
-    setEditTrainId('');
-    setEditPlatform(1);
-    setEditNotes('');
-    setEditDate('');
-    setEditPhotoFile(null);
-  }
-
-  async function handleUpdate(e: React.FormEvent) {
-    e.preventDefault();
-    
-    if (!editingCheckin || !editTrainId) {
-      alert('필수 정보가 누락되었습니다.');
-      return;
-    }
-
-    setIsUpdating(true);
-
-    try {
-      // 선택된 날짜를 timestamp로 변환 (시간은 원래 시간 유지)
-      const originalDate = new Date(editingCheckin.timestamp);
-      const newDate = new Date(editDate);
-      newDate.setHours(originalDate.getHours(), originalDate.getMinutes(), originalDate.getSeconds());
-      const updatedTimestamp = newDate.getTime();
-
-      // 새 사진이 있으면 처리
-      let photoKey = editingCheckin.photoKey;
-      if (editPhotoFile) {
-        const compressed = await compressImage(editPhotoFile);
-        const newPhotoKey = `photo_${Date.now()}`;
-        
-        await addPhoto({
-          id: newPhotoKey,
-          checkinId: editingCheckin.id,
-          blob: compressed,
-          createdAt: Date.now(),
-        });
-
-        // 기존 사진 삭제
-        if (editingCheckin.photoKey) {
-          await deletePhoto(editingCheckin.photoKey);
-        }
-        
-        photoKey = newPhotoKey;
-      }
-
-      // 체크인 업데이트
-      const updatedCheckin: Checkin = {
-        id: editingCheckin.id,
-        trainId: editTrainId,
-        platform: editPlatform,
-        timestamp: updatedTimestamp,
-        notes: editNotes,
-        photoKey,
-        createdAt: editingCheckin.createdAt,
-      };
-
-      await updateCheckin(updatedCheckin);
-      await loadData();
-      closeEditModal();
-      alert('수정되었습니다.');
-    } catch (error) {
-      console.error('수정 실패:', error);
-      alert('수정에 실패했습니다.');
-    } finally {
-      setIsUpdating(false);
-    }
   }
 
   // 내보내기 기능
@@ -435,16 +334,10 @@ export function HistoryPage() {
 
             <div className="modal-actions">
               <button
-                className="edit-btn"
-                onClick={() => openEditModal(selectedCheckin)}
-              >
-                ✏️ 수정
-              </button>
-              <button
                 className="delete-btn"
                 onClick={() => handleDelete(selectedCheckin)}
               >
-                🗑️ 삭제
+                삭제
               </button>
             </div>
           </div>
@@ -574,127 +467,6 @@ export function HistoryPage() {
                 </div>
               ))}
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* 편집 모달 */}
-      {showEditModal && editingCheckin && (
-        <div className="modal-overlay" onClick={closeEditModal}>
-          <div className="modal-content edit-modal" onClick={(e) => e.stopPropagation()}>
-            <button className="modal-close" onClick={closeEditModal}>✕</button>
-            
-            <h2>체크인 수정</h2>
-            
-            <form onSubmit={handleUpdate} className="edit-form">
-              <div className="form-group">
-                <label>날짜</label>
-                <input
-                  type="date"
-                  value={editDate}
-                  onChange={(e) => setEditDate(e.target.value)}
-                  className="form-input"
-                  max={formatDate(Date.now())}
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label>열차 일련번호</label>
-                <select
-                  value={editTrainId}
-                  onChange={(e) => setEditTrainId(e.target.value)}
-                  className="form-select"
-                  required
-                >
-                  {trains.map((train) => (
-                    <option key={train.id} value={train.id}>
-                      {train.id}번
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="form-group">
-                <label>플랫폼</label>
-                <div className="platform-toggle">
-                  <button
-                    type="button"
-                    className={editPlatform === 1 ? 'active' : ''}
-                    onClick={() => setEditPlatform(1)}
-                  >
-                    1번
-                  </button>
-                  <button
-                    type="button"
-                    className={editPlatform === 10 ? 'active' : ''}
-                    onClick={() => setEditPlatform(10)}
-                  >
-                    10번
-                  </button>
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label>특이사항</label>
-                <textarea
-                  value={editNotes}
-                  onChange={(e) => setEditNotes(e.target.value)}
-                  placeholder="특이사항을 입력하세요 (선택사항)"
-                  className="form-textarea"
-                  rows={4}
-                />
-              </div>
-
-              <div className="form-group">
-                <label>사진 변경 (선택)</label>
-                <label className="photo-capture-btn" htmlFor="edit-photo-input">
-                  📷 새 사진 촬영
-                  {editPhotoFile && <span className="photo-selected">✓</span>}
-                </label>
-                <input
-                  id="edit-photo-input"
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  onChange={(e) => setEditPhotoFile(e.target.files?.[0] || null)}
-                  className="photo-input-hidden"
-                />
-                {editPhotoFile && (
-                  <div className="photo-preview">
-                    <img src={URL.createObjectURL(editPhotoFile)} alt="미리보기" />
-                    <button
-                      type="button"
-                      className="photo-remove-btn"
-                      onClick={() => setEditPhotoFile(null)}
-                    >
-                      ✕ 삭제
-                    </button>
-                  </div>
-                )}
-                {!editPhotoFile && editingCheckin.photoKey && (
-                  <p className="photo-info">💡 기존 사진 유지 (새 사진을 선택하면 교체됩니다)</p>
-                )}
-              </div>
-
-              <div className="edit-actions">
-                <button
-                  type="submit"
-                  className="submit-btn"
-                  disabled={isUpdating || !editTrainId}
-                >
-                  {isUpdating ? '수정 중...' : '✓ 수정 완료'}
-                </button>
-                <button
-                  type="button"
-                  className="cancel-btn"
-                  onClick={closeEditModal}
-                  disabled={isUpdating}
-                >
-                  취소
-                </button>
-              </div>
-            </form>
           </div>
         </div>
       )}
