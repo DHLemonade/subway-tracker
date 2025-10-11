@@ -19,9 +19,15 @@ export function CheckinPage() {
 
   async function loadTrains() {
     const trainList = await getAllTrains();
-    setTrains(trainList);
-    if (trainList.length > 0 && !selectedTrainId) {
-      setSelectedTrainId(trainList[0].id);
+    // 열차 번호를 숫자 순서로 정렬
+    const sortedTrains = trainList.sort((a, b) => {
+      const numA = parseInt(a.id);
+      const numB = parseInt(b.id);
+      return numA - numB;
+    });
+    setTrains(sortedTrains);
+    if (sortedTrains.length > 0 && !selectedTrainId) {
+      setSelectedTrainId(sortedTrains[0].id);
     }
   }
 
@@ -30,6 +36,14 @@ export function CheckinPage() {
     
     if (!selectedTrainId) {
       alert('열차를 선택해주세요.');
+      return;
+    }
+
+    // 선택한 열차가 등록된 열차 목록에 있는지 확인
+    const trainExists = trains.some(t => t.id === selectedTrainId);
+    if (!trainExists) {
+      alert('유효하지 않은 열차입니다. 다시 선택해주세요.');
+      setSelectedTrainId('');
       return;
     }
 
@@ -112,18 +126,25 @@ export function CheckinPage() {
 
         <div className="form-group">
           <label>열차 일련번호</label>
-          <select
-            value={selectedTrainId}
-            onChange={(e) => setSelectedTrainId(e.target.value)}
-            className="train-select"
-          >
-            {trains.length === 0 && <option value="">열차를 먼저 등록해주세요</option>}
-            {trains.map((train) => (
-              <option key={train.id} value={train.id}>
-                {train.id}
-              </option>
-            ))}
-          </select>
+          {trains.length === 0 ? (
+            <div className="no-trains-warning">
+              ⚠️ 설정 페이지에서 열차를 먼저 등록해주세요
+            </div>
+          ) : (
+            <select
+              value={selectedTrainId}
+              onChange={(e) => setSelectedTrainId(e.target.value)}
+              className="train-select"
+              required
+            >
+              <option value="">열차 선택</option>
+              {trains.map((train) => (
+                <option key={train.id} value={train.id}>
+                  {train.id}번
+                </option>
+              ))}
+            </select>
+          )}
         </div>
 
         <div className="form-group">
@@ -188,9 +209,9 @@ export function CheckinPage() {
         <button
           type="submit"
           className="submit-btn"
-          disabled={isSubmitting || !selectedTrainId}
+          disabled={isSubmitting || !selectedTrainId || trains.length === 0}
         >
-          {isSubmitting ? '저장 중...' : '✓ 체크인'}
+          {isSubmitting ? '저장 중...' : trains.length === 0 ? '열차 등록 필요' : '✓ 체크인'}
         </button>
       </form>
     </div>
