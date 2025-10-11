@@ -3,7 +3,10 @@ import type { Train, CheckinWithPhoto, Checkin } from '../../types';
 import { getAllCheckins, getAllTrains, deleteCheckin, getPhotoByCheckinId, deletePhoto, addCheckin, addTrain } from '../../db/indexedDbClient';
 import { formatDateTime, blobToDataURL } from '../../utils/helpers';
 import { exportCheckinsToText, exportCheckinsToReadableText, parseImportText, copyToClipboard, shareViaKakao, downloadAsFile } from '../../utils/exportImport';
+import { CalendarView } from '../../components/CalendarView';
 import './HistoryPage.css';
+
+type ViewMode = 'list' | 'calendar';
 
 export function HistoryPage() {
   const [checkins, setCheckins] = useState<CheckinWithPhoto[]>([]);
@@ -15,6 +18,10 @@ export function HistoryPage() {
   const [showExportModal, setShowExportModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [importText, setImportText] = useState('');
+  const [viewMode, setViewMode] = useState<ViewMode>('list');
+  const [selectedMonth, setSelectedMonth] = useState<Date>(new Date());
+  const [showDateDetailModal, setShowDateDetailModal] = useState(false);
+  const [selectedDateCheckins, setSelectedDateCheckins] = useState<CheckinWithPhoto[]>([]);
 
   useEffect(() => {
     loadData();
@@ -190,9 +197,30 @@ export function HistoryPage() {
     return <div className="history-page loading">로딩 중...</div>;
   }
 
+  function handleDateClick(_dateKey: string, dateCheckins: CheckinWithPhoto[]) {
+    setSelectedDateCheckins(dateCheckins);
+    setShowDateDetailModal(true);
+  }
+
   return (
     <div className="history-page">
       <h1>작업 히스토리</h1>
+
+      {/* 뷰 전환 버튼 */}
+      <div className="view-toggle">
+        <button
+          className={`toggle-btn ${viewMode === 'list' ? 'active' : ''}`}
+          onClick={() => setViewMode('list')}
+        >
+          📋 목록
+        </button>
+        <button
+          className={`toggle-btn ${viewMode === 'calendar' ? 'active' : ''}`}
+          onClick={() => setViewMode('calendar')}
+        >
+          📅 캘린더
+        </button>
+      </div>
 
       {/* 필터 */}
       <div className="filter-section">
@@ -228,18 +256,29 @@ export function HistoryPage() {
         </button>
       </div>
 
-      {/* 체크인 목록 */}
-      <div className="checkin-list">
-        {filteredCheckins.length === 0 ? (
-          <p className="empty-message">작업 히스토리가 없습니다.</p>
-        ) : (
-          filteredCheckins.map((checkin) => (
-            <div
-              key={checkin.id}
-              className="checkin-card"
-              onClick={() => openModal(checkin)}
-            >
-              <div className="card-header">
+      {/* 캘린더 뷰 */}
+      {viewMode === 'calendar' && (
+        <CalendarView
+          checkins={filteredCheckins}
+          selectedMonth={selectedMonth}
+          onMonthChange={setSelectedMonth}
+          onDateClick={handleDateClick}
+        />
+      )}
+
+      {/* 리스트 뷰 */}
+      {viewMode === 'list' && (
+        <div className="checkin-list">
+          {filteredCheckins.length === 0 ? (
+            <p className="empty-message">작업 히스토리가 없습니다.</p>
+          ) : (
+            filteredCheckins.map((checkin) => (
+              <div
+                key={checkin.id}
+                className="checkin-card"
+                onClick={() => openModal(checkin)}
+              >
+                <div className="card-header">
                 <h3>열차: {checkin.trainNumber || checkin.trainId}</h3>
                 <span className="platform-badge">플랫폼 {checkin.platform}번</span>
               </div>
@@ -252,8 +291,9 @@ export function HistoryPage() {
               </div>
             </div>
           ))
-        )}
-      </div>
+          )}
+        </div>
+      )}
 
       {/* 상세 모달 */}
       {selectedCheckin && (
@@ -392,6 +432,40 @@ export function HistoryPage() {
 
             <div className="import-note">
               ℹ️ 중복된 데이터는 자동으로 제외됩니다.
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 날짜별 상세 모달 */}
+      {showDateDetailModal && (
+        <div className="modal-overlay" onClick={() => setShowDateDetailModal(false)}>
+          <div className="modal-content date-detail-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close" onClick={() => setShowDateDetailModal(false)}>✕</button>
+            
+            <h2>작업 내역 ({selectedDateCheckins.length}건)</h2>
+
+            <div className="date-checkin-list">
+              {selectedDateCheckins.map((checkin) => (
+                <div
+                  key={checkin.id}
+                  className="date-checkin-item"
+                  onClick={() => {
+                    setShowDateDetailModal(false);
+                    openModal(checkin);
+                  }}
+                >
+                  <div className="date-checkin-header">
+                    <h4>열차: {checkin.trainNumber || checkin.trainId}</h4>
+                    <span className="platform-badge">플랫폼 {checkin.platform}번</span>
+                  </div>
+                  <p className="timestamp">{formatDateTime(checkin.timestamp)}</p>
+                  {checkin.notes && (
+                    <p className="notes-preview">{checkin.notes.substring(0, 50)}{checkin.notes.length > 50 ? '...' : ''}</p>
+                  )}
+                  {checkin.photoKey && <span className="photo-icon">📷</span>}
+                </div>
+              ))}
             </div>
           </div>
         </div>

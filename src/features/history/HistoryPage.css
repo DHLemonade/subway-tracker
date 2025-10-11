@@ -1,8 +1,12 @@
 .history-page {
   padding: 1rem;
+  padding-bottom: 6rem; /* 하단 네비게이션 공간 확보 */
   max-width: 600px;
   margin: 0 auto;
   min-height: 100vh;
+  box-sizing: border-box;
+  width: 100%;
+  overflow-x: hidden;
 }
 
 .history-page.loading {
@@ -17,6 +21,39 @@
   font-size: 1.5rem;
   margin-bottom: 1.5rem;
   color: #333;
+}
+
+/* 뷰 전환 버튼 */
+.view-toggle {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  background-color: #f8f9fa;
+  padding: 0.5rem;
+  border-radius: 12px;
+}
+
+.toggle-btn {
+  flex: 1;
+  padding: 0.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+  background-color: transparent;
+  color: #666;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.toggle-btn.active {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(102, 126, 234, 0.3);
+}
+
+.toggle-btn:hover:not(.active) {
+  background-color: #e9ecef;
 }
 
 .filter-section {
@@ -413,4 +450,47 @@
   font-size: 0.9rem;
   color: #555;
   line-height: 1.5;
+}
+
+/* 날짜별 상세 모달 */
+.date-detail-modal {
+  max-width: 500px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.date-checkin-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.date-checkin-item {
+  padding: 1rem;
+  background-color: #f8f9fa;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.date-checkin-item:hover {
+  background-color: #fff;
+  border-color: #667eea;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.date-checkin-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.date-checkin-header h4 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: #333;
 }

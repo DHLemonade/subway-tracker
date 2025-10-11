@@ -1,5 +1,6 @@
 .trains-page {
   padding: 1rem;
+  padding-bottom: 6rem; /* 하단 네비게이션 공간 확보 */
   max-width: 600px;
   margin: 0 auto;
 }
@@ -8,6 +9,123 @@
   font-size: 1.5rem;
   margin-bottom: 1.5rem;
   color: #333;
+}
+
+.trains-page h2 {
+  font-size: 1.2rem;
+  margin-bottom: 1rem;
+  margin-top: 2rem;
+  color: #333;
+}
+
+.trains-page h3 {
+  font-size: 1.1rem;
+  margin-bottom: 0.75rem;
+  color: #555;
+}
+
+/* 저장소 정보 */
+.storage-info {
+  padding: 1.5rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 12px;
+  margin-bottom: 1.5rem;
+  color: #fff;
+}
+
+.storage-info h2 {
+  font-size: 1.2rem;
+  margin: 0 0 1rem 0;
+  color: #fff;
+}
+
+.storage-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.storage-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+}
+
+.storage-item .label {
+  font-weight: 600;
+  opacity: 0.9;
+}
+
+.storage-item .value {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.storage-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.clean-btn {
+  flex: 1;
+  padding: 0.75rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  background-color: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.clean-btn:hover:not(:disabled) {
+  background-color: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.clean-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 빠른 추가 */
+.quick-add-section {
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.quick-add-btn {
+  width: 100%;
+  padding: 1rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  background-color: #28a745;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  margin-bottom: 0.5rem;
+}
+
+.quick-add-btn:hover:not(:disabled) {
+  background-color: #218838;
+}
+
+.quick-add-btn:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.quick-add-desc {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #666;
+  font-weight: 500;
 }
 
 .add-section {
@@ -47,53 +165,91 @@
   cursor: not-allowed;
 }
 
-.trains-list h2 {
-  font-size: 1.2rem;
+.trains-list h3 {
+  font-size: 1.1rem;
   margin-bottom: 1rem;
   color: #555;
+  font-weight: 600;
 }
 
 .empty-message {
   text-align: center;
-  padding: 2rem 1rem;
+  padding: 3rem 1rem;
   color: #999;
   font-size: 1rem;
+  background-color: #f8f9fa;
+  border-radius: 12px;
+  border: 2px dashed #ddd;
 }
 
 .train-items {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
   gap: 0.75rem;
 }
 
+@media (max-width: 400px) {
+  .train-items {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+  }
+}
+
 .train-item {
+  position: relative;
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
   align-items: center;
-  padding: 1rem;
-  background-color: #fff;
-  border: 2px solid #e0e0e0;
-  border-radius: 8px;
+  justify-content: center;
+  padding: 1.5rem 1rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  min-height: 100px;
+}
+
+.train-item:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 12px rgba(0, 0, 0, 0.15);
 }
 
 .train-id {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: #333;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #fff;
+  text-align: center;
+  margin-bottom: 0.5rem;
 }
 
 .train-item .delete-btn {
-  padding: 0.5rem 1rem;
-  font-size: 0.9rem;
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  font-size: 1.2rem;
   font-weight: 600;
-  background-color: #dc3545;
+  background-color: rgba(220, 53, 69, 0.9);
   color: #fff;
   border: none;
-  border-radius: 6px;
+  border-radius: 50%;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
 }
 
 .train-item .delete-btn:hover {
-  background-color: #c82333;
+  background-color: #dc3545;
+  transform: scale(1.1);
+}
+
+.train-item .delete-btn::before {
+  content: '×';
+  font-size: 1.5rem;
 }

@@ -1,0 +1,244 @@
+.calendar-view {
+  margin-bottom: 2rem;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.calendar-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 12px;
+  color: #fff;
+}
+
+.month-title {
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin: 0;
+  flex: 1;
+  text-align: center;
+}
+
+.month-nav-btn {
+  width: 40px;
+  height: 40px;
+  border: none;
+  background-color: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  font-size: 1.8rem;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  line-height: 1;
+  padding: 0;
+}
+
+.month-nav-btn:hover {
+  background-color: rgba(255, 255, 255, 0.3);
+  transform: scale(1.1);
+}
+
+.today-btn {
+  padding: 0.5rem 1rem;
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  background-color: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.today-btn:hover {
+  background-color: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.7);
+}
+
+.calendar-grid {
+  background-color: #fff;
+  border-radius: 12px;
+  padding: 0.75rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.weekday-header {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.25rem;
+  margin-bottom: 0.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.weekday {
+  text-align: center;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #666;
+  padding: 0.4rem 0;
+}
+
+.weekday.sunday {
+  color: #ef5350;
+}
+
+.weekday.saturday {
+  color: #42a5f5;
+}
+
+.dates-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.calendar-week {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.25rem;
+}
+
+.calendar-day {
+  position: relative;
+  aspect-ratio: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  background-color: #f8f9fa;
+  cursor: default;
+  transition: all 0.2s;
+  padding: 0.2rem;
+  min-height: 50px;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.calendar-day.other-month {
+  opacity: 0.3;
+}
+
+.calendar-day.has-checkins {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.calendar-day.has-checkins:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.calendar-day.today {
+  border: 3px solid #ff6b6b;
+}
+
+.calendar-day.today.has-checkins {
+  border-color: #ffd93d;
+}
+
+.day-number {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 0.2rem;
+}
+
+.calendar-day.has-checkins .day-number {
+  color: #fff;
+  font-weight: 700;
+}
+
+.calendar-day.sunday:not(.has-checkins) .day-number {
+  color: #ef5350;
+}
+
+.calendar-day.saturday:not(.has-checkins) .day-number {
+  color: #42a5f5;
+}
+
+.checkin-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(255, 255, 255, 0.3);
+  border-radius: 12px;
+  padding: 0.15rem 0.5rem;
+  margin-top: auto;
+}
+
+.checkin-count {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+/* 작은 화면 대응 */
+@media (max-width: 600px) {
+  .calendar-header {
+    padding: 0.6rem;
+    gap: 0.4rem;
+  }
+
+  .month-title {
+    font-size: 1rem;
+  }
+
+  .month-nav-btn {
+    width: 34px;
+    height: 34px;
+    font-size: 1.4rem;
+  }
+
+  .today-btn {
+    padding: 0.4rem 0.7rem;
+    font-size: 0.8rem;
+  }
+
+  .calendar-grid {
+    padding: 0.5rem;
+  }
+
+  .weekday {
+    font-size: 0.75rem;
+    padding: 0.3rem 0;
+  }
+
+  .calendar-day {
+    min-height: 45px;
+    padding: 0.15rem;
+    border-radius: 4px;
+  }
+
+  .day-number {
+    font-size: 0.85rem;
+    margin-bottom: 0.1rem;
+  }
+
+  .checkin-indicator {
+    padding: 0.1rem 0.35rem;
+  }
+
+  .checkin-count {
+    font-size: 0.65rem;
+  }
+
+  .calendar-day.today {
+    border-width: 2px;
+  }
+}

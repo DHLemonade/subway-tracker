@@ -120,3 +120,49 @@ export async function deletePhoto(photoId: string): Promise<void> {
   const db = await initDB();
   await db.delete('photos', photoId);
 }
+
+export async function getAllPhotos(): Promise<Photo[]> {
+  const db = await initDB();
+  return db.getAll('photos');
+}
+
+// ===== Storage Management =====
+export async function calculateStorageSize(): Promise<{ total: number; photos: number; data: number }> {
+  const db = await initDB();
+  
+  // 사진 크기 계산
+  const photos = await db.getAll('photos');
+  let photosSize = 0;
+  for (const photo of photos) {
+    photosSize += photo.blob.size;
+  }
+  
+  // 체크인 데이터 크기 추정 (JSON 문자열 길이로 근사)
+  const checkins = await db.getAll('checkins');
+  const trains = await db.getAll('trains');
+  const dataSize = JSON.stringify([...checkins, ...trains]).length;
+  
+  return {
+    total: photosSize + dataSize,
+    photos: photosSize,
+    data: dataSize,
+  };
+}
+
+// 오래된 사진 삭제
+export async function deleteOldPhotos(daysOld: number): Promise<number> {
+  const db = await initDB();
+  const cutoffDate = Date.now() - (daysOld * 24 * 60 * 60 * 1000);
+  
+  const photos = await db.getAll('photos');
+  let deletedCount = 0;
+  
+  for (const photo of photos) {
+    if (photo.createdAt < cutoffDate) {
+      await db.delete('photos', photo.id);
+      deletedCount++;
+    }
+  }
+  
+  return deletedCount;
+}

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { Train, Platform, Checkin } from '../../types';
 import { getAllTrains, addCheckin, addPhoto } from '../../db/indexedDbClient';
-import { generateId, formatDate, fileToBlob } from '../../utils/helpers';
+import { generateId, formatDate, compressImage, formatFileSize } from '../../utils/helpers';
 import './CheckinPage.css';
 
 export function CheckinPage() {
@@ -11,7 +11,7 @@ export function CheckinPage() {
   const [notes, setNotes] = useState<string>('');
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const today = formatDate(Date.now());
+  const [selectedDate, setSelectedDate] = useState<string>(formatDate(Date.now()));
 
   useEffect(() => {
     loadTrains();
@@ -38,13 +38,19 @@ export function CheckinPage() {
     try {
       const checkinId = generateId();
       const now = Date.now();
+      
+      // 선택된 날짜를 timestamp로 변환 (시간은 현재 시간 유지)
+      const selectedDateObj = new Date(selectedDate);
+      const currentTime = new Date();
+      selectedDateObj.setHours(currentTime.getHours(), currentTime.getMinutes(), currentTime.getSeconds());
+      const checkinTimestamp = selectedDateObj.getTime();
 
       // 체크인 데이터 생성
       const checkin: Checkin = {
         id: checkinId,
         trainId: selectedTrainId,
         platform,
-        timestamp: now,
+        timestamp: checkinTimestamp,
         notes,
         photoKey: photoFile ? generateId() : undefined,
         createdAt: now,
@@ -53,13 +59,18 @@ export function CheckinPage() {
       // 체크인 저장
       await addCheckin(checkin);
 
-      // 사진이 있으면 저장
+      // 사진이 있으면 압축 후 저장
       if (photoFile && checkin.photoKey) {
-        const blob = await fileToBlob(photoFile);
+        const originalSize = photoFile.size;
+        const compressedBlob = await compressImage(photoFile);
+        const compressedSize = compressedBlob.size;
+        
+        console.log(`이미지 압축: ${formatFileSize(originalSize)} → ${formatFileSize(compressedSize)} (${Math.round((1 - compressedSize / originalSize) * 100)}% 절감)`);
+        
         await addPhoto({
           id: checkin.photoKey,
           checkinId: checkin.id,
-          blob,
+          blob: compressedBlob,
           createdAt: now,
         });
       }
@@ -90,7 +101,13 @@ export function CheckinPage() {
       <form onSubmit={handleSubmit} className="checkin-form">
         <div className="form-group">
           <label>날짜</label>
-          <input type="text" value={today} readOnly className="date-input" />
+          <input
+            type="date"
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
+            className="date-input"
+            max={formatDate(Date.now())}
+          />
         </div>
 
         <div className="form-group">
@@ -141,17 +158,29 @@ export function CheckinPage() {
         </div>
 
         <div className="form-group">
-          <label>사진 업로드</label>
+          <label>사진 촬영</label>
+          <label className="photo-capture-btn" htmlFor="photo-input">
+            📷 사진 촬영
+            {photoFile && <span className="photo-selected">✓</span>}
+          </label>
           <input
+            id="photo-input"
             type="file"
             accept="image/*"
             capture="environment"
             onChange={handlePhotoChange}
-            className="photo-input"
+            className="photo-input-hidden"
           />
           {photoFile && (
             <div className="photo-preview">
               <img src={URL.createObjectURL(photoFile)} alt="미리보기" />
+              <button
+                type="button"
+                className="photo-remove-btn"
+                onClick={() => setPhotoFile(null)}
+              >
+                ✕ 삭제
+              </button>
             </div>
           )}
         </div>
@@ -161,7 +190,7 @@ export function CheckinPage() {
           className="submit-btn"
           disabled={isSubmitting || !selectedTrainId}
         >
-          {isSubmitting ? '저장 중...' : '체크인'}
+          {isSubmitting ? '저장 중...' : '✓ 체크인'}
         </button>
       </form>
     </div>
