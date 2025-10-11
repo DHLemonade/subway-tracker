@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import type { Train, CheckinWithPhoto, Checkin } from '../../types';
-import { getAllCheckins, getAllTrains, deleteCheckin, getPhotoByCheckinId, deletePhoto, addCheckin, addTrain } from '../../db/indexedDbClient';
-import { formatDateTime, blobToDataURL } from '../../utils/helpers';
+import type { Train, CheckinWithPhoto, Checkin, Platform } from '../../types';
+import { getAllCheckins, getAllTrains, deleteCheckin, getPhotoByCheckinId, deletePhoto, addCheckin, addTrain, updateCheckin } from '../../db/indexedDbClient';
+import { formatDateTime, formatDate, blobToDataURL } from '../../utils/helpers';
 import { exportCheckinsToText, exportCheckinsToReadableText, parseImportText, copyToClipboard, shareViaKakao, downloadAsFile } from '../../utils/exportImport';
 import { CalendarView } from '../../components/CalendarView';
 import './HistoryPage.css';
@@ -22,6 +22,18 @@ export function HistoryPage() {
   const [selectedMonth, setSelectedMonth] = useState<Date>(new Date());
   const [showDateDetailModal, setShowDateDetailModal] = useState(false);
   const [selectedDateCheckins, setSelectedDateCheckins] = useState<CheckinWithPhoto[]>([]);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editFormData, setEditFormData] = useState<{
+    trainId: string;
+    platform: Platform;
+    date: string;
+    notes: string;
+  }>({
+    trainId: '',
+    platform: 1,
+    date: '',
+    notes: '',
+  });
 
   useEffect(() => {
     loadData();
@@ -100,6 +112,61 @@ export function HistoryPage() {
   function closeModal() {
     setSelectedCheckin(null);
     setPhotoUrl(null);
+  }
+
+  function openEditModal(checkin: CheckinWithPhoto) {
+    setEditFormData({
+      trainId: checkin.trainId,
+      platform: checkin.platform,
+      date: formatDate(checkin.timestamp),
+      notes: checkin.notes || '',
+    });
+    setShowEditModal(true);
+  }
+
+  function closeEditModal() {
+    setShowEditModal(false);
+    setEditFormData({
+      trainId: '',
+      platform: 1,
+      date: '',
+      notes: '',
+    });
+  }
+
+  async function handleUpdateCheckin() {
+    if (!selectedCheckin) return;
+
+    if (!editFormData.trainId) {
+      alert('열차를 선택해주세요.');
+      return;
+    }
+
+    try {
+      // 날짜 변환 (시간 정보는 원래 체크인의 시간 유지)
+      const originalDate = new Date(selectedCheckin.timestamp);
+      const newDate = new Date(editFormData.date);
+      newDate.setHours(originalDate.getHours(), originalDate.getMinutes(), originalDate.getSeconds());
+
+      const updatedCheckin: Checkin = {
+        id: selectedCheckin.id,
+        trainId: editFormData.trainId,
+        platform: editFormData.platform,
+        timestamp: newDate.getTime(),
+        notes: editFormData.notes,
+        photoKey: selectedCheckin.photoKey,
+        createdAt: selectedCheckin.createdAt,
+      };
+
+      await updateCheckin(updatedCheckin);
+      await loadData();
+      closeEditModal();
+      closeModal();
+      alert('체크인이 수정되었습니다.');
+    } catch (error) {
+      console.error('수정 실패:', error);
+      alert('수정에 실패했습니다.');
+    }
   }
 
   // 내보내기 기능
@@ -334,10 +401,18 @@ export function HistoryPage() {
 
             <div className="modal-actions">
               <button
+                className="edit-btn"
+                onClick={() => {
+                  openEditModal(selectedCheckin);
+                }}
+              >
+                ✏️ 수정
+              </button>
+              <button
                 className="delete-btn"
                 onClick={() => handleDelete(selectedCheckin)}
               >
-                삭제
+                🗑️ 삭제
               </button>
             </div>
           </div>
@@ -466,6 +541,98 @@ export function HistoryPage() {
                   {checkin.photoKey && <span className="photo-icon">📷</span>}
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 수정 모달 */}
+      {showEditModal && selectedCheckin && (
+        <div className="modal-overlay" onClick={closeEditModal}>
+          <div className="modal-content edit-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close" onClick={closeEditModal}>✕</button>
+            
+            <h2>체크인 수정</h2>
+
+            <div className="edit-form">
+              <div className="form-group">
+                <label>날짜</label>
+                <input
+                  type="date"
+                  value={editFormData.date}
+                  onChange={(e) => setEditFormData({ ...editFormData, date: e.target.value })}
+                  className="form-input"
+                  max={formatDate(Date.now())}
+                />
+              </div>
+
+              <div className="form-group">
+                <label>열차 일련번호</label>
+                <select
+                  value={editFormData.trainId}
+                  onChange={(e) => setEditFormData({ ...editFormData, trainId: e.target.value })}
+                  className="form-select"
+                  required
+                >
+                  {trains.map((train) => (
+                    <option key={train.id} value={train.id}>
+                      {train.id}번
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label>플랫폼</label>
+                <div className="platform-toggle">
+                  <button
+                    type="button"
+                    className={editFormData.platform === 1 ? 'active' : ''}
+                    onClick={() => setEditFormData({ ...editFormData, platform: 1 })}
+                  >
+                    1번
+                  </button>
+                  <button
+                    type="button"
+                    className={editFormData.platform === 10 ? 'active' : ''}
+                    onClick={() => setEditFormData({ ...editFormData, platform: 10 })}
+                  >
+                    10번
+                  </button>
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label>특이사항 (선택)</label>
+                <textarea
+                  value={editFormData.notes}
+                  onChange={(e) => setEditFormData({ ...editFormData, notes: e.target.value })}
+                  placeholder="특이사항이 있으면 입력하세요"
+                  className="form-textarea"
+                  rows={4}
+                />
+              </div>
+
+              {selectedCheckin.photoKey && (
+                <div className="photo-note">
+                  📷 사진은 수정할 수 없습니다. 삭제 후 다시 체크인해주세요.
+                </div>
+              )}
+
+              <div className="edit-actions">
+                <button
+                  className="save-btn"
+                  onClick={handleUpdateCheckin}
+                >
+                  💾 저장
+                </button>
+                <button
+                  className="cancel-btn"
+                  onClick={closeEditModal}
+                >
+                  취소
+                </button>
+              </div>
             </div>
           </div>
         </div>
