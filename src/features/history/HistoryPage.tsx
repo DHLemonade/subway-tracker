@@ -13,7 +13,7 @@ export function HistoryPage() {
   const [trains, setTrains] = useState<Train[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [selectedCheckin, setSelectedCheckin] = useState<CheckinWithPhoto | null>(null);
-  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [photoUrls, setPhotoUrls] = useState<string[]>([]);
   const [filterTrainId, setFilterTrainId] = useState<string>('');
   const [filterTaskId, setFilterTaskId] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
@@ -42,10 +42,10 @@ export function HistoryPage() {
   }, []);
 
   useEffect(() => {
-    if (selectedCheckin?.photoKey) {
-      loadPhoto(selectedCheckin.photoKey);
+    if (selectedCheckin) {
+      loadPhotos(selectedCheckin);
     } else {
-      setPhotoUrl(null);
+      setPhotoUrls([]);
     }
   }, [selectedCheckin]);
 
@@ -77,25 +77,37 @@ export function HistoryPage() {
     }
   }
 
-  async function loadPhoto(_photoKey: string) {
+  async function loadPhotos(checkin: CheckinWithPhoto) {
     try {
-      const photo = await getPhotoByCheckinId(selectedCheckin!.id);
-      if (photo && photo.blob) {
-        console.log('Photo blob info:', {
-          size: photo.blob.size,
-          type: photo.blob.type,
-          checkinId: selectedCheckin!.id
-        });
-        
-        const dataUrl = await blobToDataURL(photo.blob);
-        setPhotoUrl(dataUrl);
-      } else {
-        console.warn('Photo not found or invalid blob');
-        setPhotoUrl(null);
+      const urls: string[] = [];
+      
+      // 새 형식: photoKeys 배열
+      if (checkin.photoKeys && checkin.photoKeys.length > 0) {
+        for (const photoKey of checkin.photoKeys) {
+          try {
+            const photo = await getPhotoByCheckinId(checkin.id);
+            if (photo && photo.blob) {
+              const dataUrl = await blobToDataURL(photo.blob);
+              urls.push(dataUrl);
+            }
+          } catch (error) {
+            console.error(`사진 로드 실패 (${photoKey}):`, error);
+          }
+        }
       }
+      // 구 형식: photoKey 단일 (하위 호환성)
+      else if (checkin.photoKey) {
+        const photo = await getPhotoByCheckinId(checkin.id);
+        if (photo && photo.blob) {
+          const dataUrl = await blobToDataURL(photo.blob);
+          urls.push(dataUrl);
+        }
+      }
+      
+      setPhotoUrls(urls);
     } catch (error) {
       console.error('사진 로드 실패:', error);
-      setPhotoUrl(null);
+      setPhotoUrls([]);
     }
   }
 
@@ -103,10 +115,17 @@ export function HistoryPage() {
     if (!confirm('정말 삭제하시겠습니까?')) return;
 
     try {
-      // 사진이 있으면 함께 삭제
-      if (checkin.photoKey) {
+      // 사진들이 있으면 함께 삭제
+      if (checkin.photoKeys && checkin.photoKeys.length > 0) {
+        for (const photoKey of checkin.photoKeys) {
+          await deletePhoto(photoKey);
+        }
+      }
+      // 구 형식 호환성
+      else if (checkin.photoKey) {
         await deletePhoto(checkin.photoKey);
       }
+      
       await deleteCheckin(checkin.id);
       
       // 목록 새로고침
@@ -125,7 +144,7 @@ export function HistoryPage() {
 
   function closeModal() {
     setSelectedCheckin(null);
-    setPhotoUrl(null);
+    setPhotoUrls([]);
   }
 
   function openEditModal(checkin: CheckinWithPhoto) {
@@ -517,10 +536,16 @@ export function HistoryPage() {
                 </div>
               )}
 
-              {photoUrl && (
-                <div className="detail-photo">
-                  <strong>사진:</strong>
-                  <img src={photoUrl} alt="체크인 사진" />
+              {photoUrls.length > 0 && (
+                <div className="detail-photos">
+                  <strong>사진 ({photoUrls.length}장):</strong>
+                  <div className="detail-photos-grid">
+                    {photoUrls.map((url, index) => (
+                      <div key={index} className="detail-photo-item">
+                        <img src={url} alt={`체크인 사진 ${index + 1}`} />
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>

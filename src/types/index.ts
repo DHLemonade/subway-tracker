@@ -20,7 +20,8 @@ export interface Checkin {
   platform: Platform; // 플랫폼 번호 (1 또는 10)
   timestamp: number; // 체크인 시간
   notes: string; // 특이사항
-  photoKey?: string; // 사진 ID (photos 테이블의 키)
+  photoKey?: string; // 사진 ID (photos 테이블의 키) - 하위 호환성 유지
+  photoKeys?: string[]; // 여러 사진 ID 배열
   taskId?: string; // 수주일 ID
   createdAt: number; // 생성 시간
 }

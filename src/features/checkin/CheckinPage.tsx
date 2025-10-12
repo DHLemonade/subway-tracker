@@ -9,7 +9,7 @@ export function CheckinPage() {
   const [selectedTrainId, setSelectedTrainId] = useState<string>('');
   const [platform, setPlatform] = useState<Platform>(1);
   const [notes, setNotes] = useState<string>('');
-  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoFiles, setPhotoFiles] = useState<File[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string>(formatDate(Date.now()));
   
@@ -77,6 +77,11 @@ export function CheckinPage() {
       selectedDateObj.setHours(currentTime.getHours(), currentTime.getMinutes(), currentTime.getSeconds());
       const checkinTimestamp = selectedDateObj.getTime();
 
+      // 사진 ID 배열 생성
+      const photoKeys = photoFiles.length > 0 
+        ? photoFiles.map(() => generateId()) 
+        : undefined;
+
       // 체크인 데이터 생성
       const checkin: Checkin = {
         id: checkinId,
@@ -84,7 +89,7 @@ export function CheckinPage() {
         platform,
         timestamp: checkinTimestamp,
         notes,
-        photoKey: photoFile ? generateId() : undefined,
+        photoKeys,
         taskId: selectedTaskId || undefined,
         createdAt: now,
       };
@@ -92,34 +97,35 @@ export function CheckinPage() {
       // 체크인 저장
       await addCheckin(checkin);
 
-      // 사진이 있으면 압축 후 저장
-      if (photoFile && checkin.photoKey) {
-        const originalSize = photoFile.size;
-        const compressedBlob = await compressImage(photoFile);
-        const compressedSize = compressedBlob.size;
-        
-        console.log(`이미지 압축: ${formatFileSize(originalSize)} → ${formatFileSize(compressedSize)} (${Math.round((1 - compressedSize / originalSize) * 100)}% 절감)`);
-        console.log('Compressed blob info:', {
-          size: compressedBlob.size,
-          type: compressedBlob.type
-        });
-        
-        // MIME 타입이 없으면 명시적으로 설정 (사파리 호환성)
-        const blobWithType = compressedBlob.type 
-          ? compressedBlob 
-          : new Blob([compressedBlob], { type: 'image/jpeg' });
-        
-        await addPhoto({
-          id: checkin.photoKey,
-          checkinId: checkin.id,
-          blob: blobWithType,
-          createdAt: now,
-        });
+      // 사진들이 있으면 각각 압축 후 저장
+      if (photoFiles.length > 0 && photoKeys) {
+        for (let i = 0; i < photoFiles.length; i++) {
+          const photoFile = photoFiles[i];
+          const photoKey = photoKeys[i];
+          
+          const originalSize = photoFile.size;
+          const compressedBlob = await compressImage(photoFile);
+          const compressedSize = compressedBlob.size;
+          
+          console.log(`이미지 ${i + 1} 압축: ${formatFileSize(originalSize)} → ${formatFileSize(compressedSize)} (${Math.round((1 - compressedSize / originalSize) * 100)}% 절감)`);
+          
+          // MIME 타입이 없으면 명시적으로 설정 (사파리 호환성)
+          const blobWithType = compressedBlob.type 
+            ? compressedBlob 
+            : new Blob([compressedBlob], { type: 'image/jpeg' });
+          
+          await addPhoto({
+            id: photoKey,
+            checkinId: checkin.id,
+            blob: blobWithType,
+            createdAt: now,
+          });
+        }
       }
 
       // 폼 초기화
       setNotes('');
-      setPhotoFile(null);
+      setPhotoFiles([]);
       alert('체크인이 완료되었습니다!');
     } catch (error) {
       console.error('체크인 실패:', error);
@@ -130,9 +136,10 @@ export function CheckinPage() {
   }
 
   function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (file) {
-      setPhotoFile(file);
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      const fileArray = Array.from(files);
+      setPhotoFiles(fileArray);
     }
   }
 
@@ -228,29 +235,36 @@ export function CheckinPage() {
         </div>
 
         <div className="form-group">
-          <label>사진 촬영</label>
+          <label>사진 추가 (최대 10장)</label>
           <label className="photo-capture-btn" htmlFor="photo-input">
-            📷 사진 촬영
-            {photoFile && <span className="photo-selected">✓</span>}
+            📷 사진 선택
+            {photoFiles.length > 0 && <span className="photo-selected">✓ {photoFiles.length}장</span>}
           </label>
           <input
             id="photo-input"
             type="file"
             accept="image/*"
-            capture="environment"
+            multiple
             onChange={handlePhotoChange}
             className="photo-input-hidden"
           />
-          {photoFile && (
-            <div className="photo-preview">
-              <img src={URL.createObjectURL(photoFile)} alt="미리보기" />
-              <button
-                type="button"
-                className="photo-remove-btn"
-                onClick={() => setPhotoFile(null)}
-              >
-                ✕ 삭제
-              </button>
+          {photoFiles.length > 0 && (
+            <div className="photos-preview">
+              {photoFiles.map((file, index) => (
+                <div key={index} className="photo-preview-item">
+                  <img src={URL.createObjectURL(file)} alt={`미리보기 ${index + 1}`} />
+                  <button
+                    type="button"
+                    className="photo-remove-btn"
+                    onClick={() => {
+                      const newFiles = photoFiles.filter((_, i) => i !== index);
+                      setPhotoFiles(newFiles);
+                    }}
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
             </div>
           )}
         </div>

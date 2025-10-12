@@ -45,12 +45,6 @@ export function TrainsPage() {
       return;
     }
 
-    // 중복 체크
-    if (tasks.some((t) => t.date === taskDate)) {
-      alert('이미 등록된 날짜입니다.');
-      return;
-    }
-
     setIsAdding(true);
 
     try {
