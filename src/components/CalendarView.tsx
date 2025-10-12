@@ -1,16 +1,17 @@
 import { useMemo } from 'react';
-import type { CheckinWithPhoto } from '../types';
+import type { CheckinWithPhoto, Task } from '../types';
 import { formatDate } from '../utils/helpers';
 import './CalendarView.css';
 
 interface CalendarViewProps {
   checkins: CheckinWithPhoto[];
+  tasks?: Task[];
   selectedMonth: Date;
   onMonthChange: (month: Date) => void;
   onDateClick: (date: string, checkins: CheckinWithPhoto[]) => void;
 }
 
-export function CalendarView({ checkins, selectedMonth, onMonthChange, onDateClick }: CalendarViewProps) {
+export function CalendarView({ checkins, tasks = [], selectedMonth, onMonthChange, onDateClick }: CalendarViewProps) {
   // 캘린더 데이터 계산
   const calendarData = useMemo(() => {
     const year = selectedMonth.getFullYear();
@@ -113,11 +114,12 @@ export function CalendarView({ checkins, selectedMonth, onMonthChange, onDateCli
                 const isToday = day.dateKey === formatDate(Date.now());
                 const isSunday = dayIndex === 0;
                 const isSaturday = dayIndex === 6;
+                const isTaskDate = tasks.some(task => task.date === day.dateKey);
 
                 return (
                   <div
                     key={day.dateKey}
-                    className={`calendar-day ${!day.isCurrentMonth ? 'other-month' : ''} ${hasCheckins ? 'has-checkins' : ''} ${isToday ? 'today' : ''} ${isSunday ? 'sunday' : ''} ${isSaturday ? 'saturday' : ''}`}
+                    className={`calendar-day ${!day.isCurrentMonth ? 'other-month' : ''} ${hasCheckins ? 'has-checkins' : ''} ${isToday ? 'today' : ''} ${isSunday ? 'sunday' : ''} ${isSaturday ? 'saturday' : ''} ${isTaskDate ? 'task-date' : ''}`}
                     onClick={() => hasCheckins && onDateClick(day.dateKey, day.checkins)}
                   >
                     <div className="day-number">{day.date.getDate()}</div>

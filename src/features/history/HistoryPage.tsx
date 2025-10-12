@@ -1,12 +1,15 @@
 import { useState, useEffect } from 'react';
 import type { Train, CheckinWithPhoto, Checkin, Platform, Task } from '../../types';
-import { getAllCheckins, getAllTrains, deleteCheckin, getPhotoByCheckinId, deletePhoto, addCheckin, addTrain, updateCheckin, getAllTasks } from '../../db/indexedDbClient';
+import { getAllCheckins, getAllTrains, deleteCheckin, getPhotoByCheckinId, deletePhoto, addCheckin, addTrain, updateCheckin, getAllTasks, addTask } from '../../db/indexedDbClient';
 import { formatDateTime, formatDate, blobToDataURL } from '../../utils/helpers';
 import { exportCheckinsToText, exportCheckinsToReadableText, parseImportText, copyToClipboard, shareViaKakao, downloadAsFile } from '../../utils/exportImport';
 import { CalendarView } from '../../components/CalendarView';
 import './HistoryPage.css';
 
 type ViewMode = 'list' | 'calendar';
+
+type SortType = 'latest' | 'train' | 'task';
+type SortOrder = 'asc' | 'desc';
 
 export function HistoryPage() {
   const [checkins, setCheckins] = useState<CheckinWithPhoto[]>([]);
@@ -16,9 +19,12 @@ export function HistoryPage() {
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
   const [filterTrainId, setFilterTrainId] = useState<string>('');
   const [filterTaskId, setFilterTaskId] = useState<string>('');
+  const [sortType, setSortType] = useState<SortType>('latest');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [isLoading, setIsLoading] = useState(true);
   const [showExportModal, setShowExportModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [showKakaoShareModal, setShowKakaoShareModal] = useState(false);
   const [importText, setImportText] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [selectedMonth, setSelectedMonth] = useState<Date>(new Date());
@@ -188,6 +194,8 @@ export function HistoryPage() {
         timestamp: newDate.getTime(),
         notes: editFormData.notes,
         photoKey: selectedCheckin.photoKey,
+        photoKeys: selectedCheckin.photoKeys,
+        taskId: selectedCheckin.taskId,
         createdAt: selectedCheckin.createdAt,
       };
 
@@ -204,7 +212,7 @@ export function HistoryPage() {
 
   // 내보내기 기능
   async function handleExportJSON() {
-    const text = exportCheckinsToText(trains, checkins);
+    const text = exportCheckinsToText(trains, tasks, checkins);
     const success = await copyToClipboard(text);
     if (success) {
       alert('JSON 데이터가 클립보드에 복사되었습니다!');
@@ -223,18 +231,33 @@ export function HistoryPage() {
     }
   }
 
-  async function handleShareKakao() {
+  function handleShareKakao() {
+    setShowExportModal(false);
+    setShowKakaoShareModal(true);
+  }
+
+  async function handleShareKakaoReadable() {
     const text = exportCheckinsToReadableText(trains, checkins);
     const success = await shareViaKakao(text);
     if (success) {
-      // 공유 성공
+      setShowKakaoShareModal(false);
+    } else {
+      alert('공유에 실패했습니다. 텍스트가 클립보드에 복사되었습니다.');
+    }
+  }
+
+  async function handleShareKakaoJSON() {
+    const text = exportCheckinsToText(trains, tasks, checkins);
+    const success = await shareViaKakao(text);
+    if (success) {
+      setShowKakaoShareModal(false);
     } else {
       alert('공유에 실패했습니다. 텍스트가 클립보드에 복사되었습니다.');
     }
   }
 
   function handleDownloadFile() {
-    const text = exportCheckinsToText(trains, checkins);
+    const text = exportCheckinsToText(trains, tasks, checkins);
     const timestamp = new Date().toISOString().split('T')[0];
     downloadAsFile(text, `subway-checkins-${timestamp}.json`);
     alert('파일이 다운로드되었습니다!');
@@ -257,9 +280,11 @@ export function HistoryPage() {
     try {
       // 중복 체크를 위한 기존 ID 수집
       const existingTrainIds = new Set(trains.map(t => t.id));
+      const existingTaskIds = new Set(tasks.map(t => t.id));
       const existingCheckinIds = new Set(checkins.map(c => c.id));
 
       let addedTrains = 0;
+      let addedTasks = 0;
       let addedCheckins = 0;
 
       // 열차 추가 (중복 제외)
@@ -267,6 +292,14 @@ export function HistoryPage() {
         if (!existingTrainIds.has(train.id)) {
           await addTrain(train);
           addedTrains++;
+        }
+      }
+
+      // 수주일 추가 (중복 제외)
+      for (const task of data.tasks) {
+        if (!existingTaskIds.has(task.id)) {
+          await addTask(task);
+          addedTasks++;
         }
       }
 
@@ -282,16 +315,71 @@ export function HistoryPage() {
       await loadData();
       setShowImportModal(false);
       setImportText('');
-      alert(`가져오기 완료!\n열차: ${addedTrains}개, 체크인: ${addedCheckins}개 추가됨`);
+      alert(`가져오기 완료!\n열차: ${addedTrains}개, 수주일: ${addedTasks}개, 체크인: ${addedCheckins}개 추가됨`);
     } catch (error) {
       console.error('Import error:', error);
       alert('데이터 가져오기에 실패했습니다.');
     }
   }
 
-  const filteredCheckins = checkins
+  // 필터링 및 정렬
+  const filteredAndSortedCheckins = checkins
     .filter((c) => !filterTrainId || c.trainId === filterTrainId)
-    .filter((c) => !filterTaskId || c.taskId === filterTaskId);
+    .filter((c) => !filterTaskId || c.taskId === filterTaskId)
+    .sort((a, b) => {
+      let result = 0;
+      
+      switch (sortType) {
+        case 'latest':
+          // 시간순 정렬
+          result = b.timestamp - a.timestamp;
+          break;
+        
+        case 'train':
+          // 열차 번호순 정렬 (내림차순 기준: 큰 번호 -> 작은 번호)
+          const trainNumA = parseInt(a.trainId);
+          const trainNumB = parseInt(b.trainId);
+          result = trainNumB - trainNumA;
+          break;
+        
+        case 'task':
+          // 수주일순 정렬
+          if (!a.taskId && !b.taskId) {
+            result = b.timestamp - a.timestamp;
+          } else if (!a.taskId) {
+            result = 1; // taskId 없는 것은 아래로
+          } else if (!b.taskId) {
+            result = -1;
+          } else {
+            const taskA = tasks.find(t => t.id === a.taskId);
+            const taskB = tasks.find(t => t.id === b.taskId);
+            
+            if (!taskA && !taskB) {
+              result = b.timestamp - a.timestamp;
+            } else if (!taskA) {
+              result = 1;
+            } else if (!taskB) {
+              result = -1;
+            } else {
+              // 수주일 날짜 비교
+              const dateCompare = taskB.date.localeCompare(taskA.date);
+              if (dateCompare !== 0) {
+                result = dateCompare;
+              } else {
+                // 같은 수주일이면 timestamp로 정렬
+                result = b.timestamp - a.timestamp;
+              }
+            }
+          }
+          break;
+        
+        default:
+          result = b.timestamp - a.timestamp;
+      }
+      
+      // 오름차순/내림차순 적용
+      return sortOrder === 'asc' ? -result : result;
+    });
 
   // 수주일별 완료 현황 계산
   const taskCompletionStatus = filterTaskId && tasks.length > 0
@@ -389,6 +477,40 @@ export function HistoryPage() {
         </div>
       </div>
 
+      {/* 정렬 */}
+      <div className="sort-section">
+        <div className="sort-header">
+          <label>정렬:</label>
+          <button
+            className="sort-order-btn"
+            onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}
+            title={sortOrder === 'desc' ? '내림차순' : '오름차순'}
+          >
+            {sortOrder === 'desc' ? '↓ 내림차순' : '↑ 오름차순'}
+          </button>
+        </div>
+        <div className="sort-buttons">
+          <button
+            className={`sort-btn ${sortType === 'latest' ? 'active' : ''}`}
+            onClick={() => setSortType('latest')}
+          >
+            🕐 시간순
+          </button>
+          <button
+            className={`sort-btn ${sortType === 'train' ? 'active' : ''}`}
+            onClick={() => setSortType('train')}
+          >
+            🚆 열차순
+          </button>
+          <button
+            className={`sort-btn ${sortType === 'task' ? 'active' : ''}`}
+            onClick={() => setSortType('task')}
+          >
+            📅 수주일순
+          </button>
+        </div>
+      </div>
+
       {/* 수주일별 완료 현황 */}
       {taskCompletionStatus && (
         <div className="task-completion-section">
@@ -458,7 +580,8 @@ export function HistoryPage() {
       {/* 캘린더 뷰 */}
       {viewMode === 'calendar' && (
         <CalendarView
-          checkins={filteredCheckins}
+          checkins={filteredAndSortedCheckins}
+          tasks={tasks}
           selectedMonth={selectedMonth}
           onMonthChange={setSelectedMonth}
           onDateClick={handleDateClick}
@@ -468,28 +591,36 @@ export function HistoryPage() {
       {/* 리스트 뷰 */}
       {viewMode === 'list' && (
         <div className="checkin-list">
-          {filteredCheckins.length === 0 ? (
+          {filteredAndSortedCheckins.length === 0 ? (
             <p className="empty-message">작업 히스토리가 없습니다.</p>
           ) : (
-            filteredCheckins.map((checkin) => (
-              <div
-                key={checkin.id}
-                className="checkin-card"
-                onClick={() => openModal(checkin)}
-              >
-                <div className="card-header">
-                <h3>열차: {checkin.trainNumber || checkin.trainId}</h3>
-                <span className="platform-badge">플랫폼 {checkin.platform}번</span>
-              </div>
-              <div className="card-body">
-                <p className="timestamp">{formatDateTime(checkin.timestamp)}</p>
-                {checkin.notes && (
-                  <p className="notes-preview">{checkin.notes.substring(0, 50)}{checkin.notes.length > 50 ? '...' : ''}</p>
-                )}
-                {checkin.photoKey && <span className="photo-icon">📷</span>}
-              </div>
-            </div>
-          ))
+            filteredAndSortedCheckins.map((checkin) => {
+              const task = checkin.taskId ? tasks.find(t => t.id === checkin.taskId) : null;
+              return (
+                <div
+                  key={checkin.id}
+                  className="checkin-card"
+                  onClick={() => openModal(checkin)}
+                >
+                  <div className="card-header">
+                    <div className="badge-group">
+                      <span className="train-badge">열차 {checkin.trainNumber || checkin.trainId}</span>
+                      <span className="platform-badge">플랫폼 {checkin.platform}번</span>
+                    </div>
+                  </div>
+                  <div className="card-body">
+                    <p className="timestamp">{formatDateTime(checkin.timestamp)}</p>
+                    {task && (
+                      <p className="task-info">📅 {task.date}{task.name ? ` - ${task.name}` : ''}</p>
+                    )}
+                    {checkin.notes && (
+                      <p className="notes-preview">{checkin.notes.substring(0, 50)}{checkin.notes.length > 50 ? '...' : ''}</p>
+                    )}
+                    {checkin.photoKey && <span className="photo-icon">📷</span>}
+                  </div>
+                </div>
+              );
+            })
           )}
         </div>
       )}
@@ -658,6 +789,38 @@ export function HistoryPage() {
 
             <div className="import-note">
               ℹ️ 중복된 데이터는 자동으로 제외됩니다.
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 카카오톡 공유 형식 선택 모달 */}
+      {showKakaoShareModal && (
+        <div className="modal-overlay" onClick={() => setShowKakaoShareModal(false)}>
+          <div className="modal-content export-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close" onClick={() => setShowKakaoShareModal(false)}>✕</button>
+            
+            <h2>카카오톡 공유 형식 선택</h2>
+            <p className="modal-description">
+              공유할 데이터 형식을 선택하세요.
+            </p>
+
+            <div className="export-options">
+              <button className="option-btn" onClick={handleShareKakaoReadable}>
+                <span className="option-icon">📝</span>
+                <div className="option-text">
+                  <strong>읽기 쉬운 형태</strong>
+                  <small>사람이 보기 편한 텍스트 형태</small>
+                </div>
+              </button>
+
+              <button className="option-btn" onClick={handleShareKakaoJSON}>
+                <span className="option-icon">📋</span>
+                <div className="option-text">
+                  <strong>JSON 형태</strong>
+                  <small>데이터 가져오기에 사용 가능</small>
+                </div>
+              </button>
             </div>
           </div>
         </div>

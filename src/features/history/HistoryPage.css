@@ -87,6 +87,82 @@
   background-color: #fff;
 }
 
+/* 정렬 섹션 */
+.sort-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  padding: 1rem;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+}
+
+.sort-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sort-header label {
+  font-weight: 600;
+  color: #555;
+  font-size: 0.95rem;
+}
+
+.sort-order-btn {
+  padding: 0.4rem 0.8rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  background-color: #fff;
+  color: #667eea;
+  border: 2px solid #667eea;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.sort-order-btn:hover {
+  background-color: #667eea;
+  color: #fff;
+}
+
+.sort-order-btn:active {
+  transform: scale(0.95);
+}
+
+.sort-buttons {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.sort-btn {
+  flex: 1;
+  min-width: 100px;
+  padding: 0.6rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  background-color: #fff;
+  color: #666;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.sort-btn:hover {
+  background-color: #e9ecef;
+  border-color: #adb5bd;
+}
+
+.sort-btn.active {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+  border-color: transparent;
+  box-shadow: 0 2px 6px rgba(102, 126, 234, 0.3);
+}
+
 /* 수주일별 완료 현황 섹션 */
 .task-completion-section {
   margin-bottom: 1.5rem;
@@ -279,6 +355,21 @@
   color: #333;
 }
 
+.badge-group {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.train-badge {
+  padding: 0.25rem 0.75rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
 .platform-badge {
   padding: 0.25rem 0.75rem;
   background-color: #007bff;
@@ -298,6 +389,13 @@
   font-size: 0.9rem;
   color: #666;
   margin: 0;
+}
+
+.task-info {
+  font-size: 0.9rem;
+  color: #667eea;
+  margin: 0;
+  font-weight: 500;
 }
 
 .notes-preview {

@@ -1,15 +1,16 @@
-import type { Checkin, Train } from '../types';
+import type { Checkin, Train, Task } from '../types';
 
 // 데이터 내보내기 포맷
 export interface ExportData {
   version: string;
   exportDate: number;
   trains: Train[];
+  tasks: Task[];
   checkins: Omit<Checkin, 'photoKey'>[]; // 사진 제외
 }
 
 // 체크인 데이터를 텍스트로 변환 (JSON)
-export function exportCheckinsToText(trains: Train[], checkins: Checkin[]): string {
+export function exportCheckinsToText(trains: Train[], tasks: Task[], checkins: Checkin[]): string {
   // photoKey 제외하고 내보내기
   const checkinsWithoutPhotos = checkins.map(({ photoKey, ...rest }) => rest);
   
@@ -17,6 +18,7 @@ export function exportCheckinsToText(trains: Train[], checkins: Checkin[]): stri
     version: '1.0',
     exportDate: Date.now(),
     trains,
+    tasks,
     checkins: checkinsWithoutPhotos,
   };
 
@@ -31,6 +33,11 @@ export function parseImportText(text: string): ExportData | null {
     // 기본 검증
     if (!data.version || !Array.isArray(data.trains) || !Array.isArray(data.checkins)) {
       throw new Error('Invalid data format');
+    }
+
+    // tasks가 없는 구버전 데이터 호환성 처리
+    if (!data.tasks) {
+      data.tasks = [];
     }
 
     return data;

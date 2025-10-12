@@ -152,6 +152,27 @@
   border-color: #ffd93d;
 }
 
+/* 수주일 강조 */
+.calendar-day.task-date {
+  background-color: rgba(239, 83, 80, 0.15);
+  border: 2px solid #ef5350;
+}
+
+.calendar-day.task-date.has-checkins {
+  border-color: #ef5350;
+  box-shadow: 0 0 0 2px rgba(239, 83, 80, 0.3);
+}
+
+.calendar-day.task-date .day-number {
+  color: #ef5350;
+  font-weight: 700;
+}
+
+.calendar-day.task-date.has-checkins .day-number {
+  color: #fff;
+  text-shadow: 0 0 3px rgba(239, 83, 80, 0.8);
+}
+
 .day-number {
   font-size: 0.9rem;
   font-weight: 600;
