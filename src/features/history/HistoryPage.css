@@ -58,7 +58,7 @@
 
 .filter-section {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: 0.75rem;
   margin-bottom: 1rem;
   padding: 1rem;
@@ -66,9 +66,16 @@
   border-radius: 8px;
 }
 
-.filter-section label {
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.filter-group label {
   font-weight: 600;
   color: #555;
+  min-width: 70px;
 }
 
 .filter-select {
@@ -78,6 +85,116 @@
   border: 2px solid #ddd;
   border-radius: 6px;
   background-color: #fff;
+}
+
+/* 수주일별 완료 현황 섹션 */
+.task-completion-section {
+  margin-bottom: 1.5rem;
+  padding: 1.5rem;
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(240, 147, 251, 0.3);
+}
+
+.task-completion-section h2 {
+  margin: 0 0 1rem 0;
+  font-size: 1.2rem;
+  color: #fff;
+}
+
+.completion-summary {
+  background-color: rgba(255, 255, 255, 0.95);
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+}
+
+.completion-info {
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.task-date {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #333;
+}
+
+.task-name {
+  margin-left: 0.5rem;
+  font-size: 0.95rem;
+  color: #666;
+}
+
+.completion-stats {
+  display: flex;
+  gap: 1rem;
+}
+
+.stat-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.stat-label {
+  font-size: 0.85rem;
+  color: #666;
+  font-weight: 600;
+}
+
+.stat-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #f5576c;
+}
+
+.train-checklist {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 0.5rem;
+}
+
+.train-check-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background-color: rgba(255, 255, 255, 0.9);
+  border-radius: 6px;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+}
+
+.train-check-item.completed {
+  background-color: rgba(102, 255, 102, 0.3);
+  font-weight: 600;
+}
+
+.train-check-item.clickable {
+  cursor: pointer;
+}
+
+.train-check-item.clickable:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  background-color: rgba(102, 255, 102, 0.5);
+}
+
+.train-check-item.clickable:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.check-icon {
+  font-size: 1.1rem;
+}
+
+.train-number {
+  color: #333;
 }
 
 /* 내보내기/가져오기 섹션 */

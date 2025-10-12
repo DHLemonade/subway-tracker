@@ -5,6 +5,13 @@ export interface Train {
   createdAt: number; // 등록 시간
 }
 
+export interface Task {
+  id: string; // UUID
+  date: string; // 일감 받은 날짜 (YYYY-MM-DD)
+  name?: string; // 작업명 (선택)
+  createdAt: number; // 생성 시간
+}
+
 export type Platform = 1 | 10;
 
 export interface Checkin {
@@ -14,6 +21,7 @@ export interface Checkin {
   timestamp: number; // 체크인 시간
   notes: string; // 특이사항
   photoKey?: string; // 사진 ID (photos 테이블의 키)
+  taskId?: string; // 수주일 ID
   createdAt: number; // 생성 시간
 }
 

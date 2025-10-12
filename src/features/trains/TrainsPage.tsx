@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import type { Train } from '../../types';
-import { getAllTrains, addTrain, deleteTrain, calculateStorageSize, deleteOldPhotos } from '../../db/indexedDbClient';
-import { formatFileSize } from '../../utils/helpers';
+import type { Train, Task } from '../../types';
+import { getAllTrains, addTrain, deleteTrain, calculateStorageSize, deleteOldPhotos, getAllTasks, addTask, deleteTask } from '../../db/indexedDbClient';
+import { formatFileSize, generateId, formatDate } from '../../utils/helpers';
 import './TrainsPage.css';
 
 export function TrainsPage() {
@@ -10,10 +10,16 @@ export function TrainsPage() {
   const [isAdding, setIsAdding] = useState(false);
   const [storageInfo, setStorageInfo] = useState<{ total: number; photos: number; data: number } | null>(null);
   const [isCleaning, setIsCleaning] = useState(false);
+  
+  // 수주일 관리
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [newTaskDate, setNewTaskDate] = useState<string>(formatDate(Date.now()));
+  const [newTaskName, setNewTaskName] = useState<string>('');
 
   useEffect(() => {
     loadTrains();
     loadStorageInfo();
+    loadTasks();
   }, []);
 
   async function loadStorageInfo() {
@@ -24,6 +30,61 @@ export function TrainsPage() {
   async function loadTrains() {
     const trainList = await getAllTrains();
     setTrains(trainList);
+  }
+
+  async function loadTasks() {
+    const taskList = await getAllTasks();
+    setTasks(taskList);
+  }
+
+  async function handleAddTask() {
+    const taskDate = newTaskDate.trim();
+    
+    if (!taskDate) {
+      alert('날짜를 선택해주세요.');
+      return;
+    }
+
+    // 중복 체크
+    if (tasks.some((t) => t.date === taskDate)) {
+      alert('이미 등록된 날짜입니다.');
+      return;
+    }
+
+    setIsAdding(true);
+
+    try {
+      const task: Task = {
+        id: generateId(),
+        date: taskDate,
+        name: newTaskName.trim() || undefined,
+        createdAt: Date.now(),
+      };
+
+      await addTask(task);
+      await loadTasks();
+      setNewTaskDate(formatDate(Date.now()));
+      setNewTaskName('');
+      alert('수주일이 등록되었습니다.');
+    } catch (error) {
+      console.error('수주일 등록 실패:', error);
+      alert('수주일 등록에 실패했습니다.');
+    } finally {
+      setIsAdding(false);
+    }
+  }
+
+  async function handleDeleteTask(taskId: string, taskDate: string) {
+    if (!confirm(`"${taskDate}" 수주일을 삭제하시겠습니까?`)) return;
+
+    try {
+      await deleteTask(taskId);
+      await loadTasks();
+      alert('수주일이 삭제되었습니다.');
+    } catch (error) {
+      console.error('수주일 삭제 실패:', error);
+      alert('수주일 삭제에 실패했습니다.');
+    }
   }
 
   async function handleAdd() {
@@ -122,6 +183,56 @@ export function TrainsPage() {
   return (
     <div className="trains-page">
       <h1>설정</h1>
+
+      {/* 수주일 관리 */}
+      <h2>📅 수주일 관리</h2>
+      <div className="task-add-section">
+        <input
+          type="date"
+          value={newTaskDate}
+          onChange={(e) => setNewTaskDate(e.target.value)}
+          className="task-date-input"
+        />
+        <input
+          type="text"
+          value={newTaskName}
+          onChange={(e) => setNewTaskName(e.target.value)}
+          placeholder="작업명 (선택)"
+          className="task-name-input"
+        />
+        <button
+          onClick={handleAddTask}
+          className="task-add-btn"
+          disabled={isAdding}
+        >
+          {isAdding ? '등록 중...' : '등록'}
+        </button>
+      </div>
+
+      <div className="tasks-list">
+        <h3>등록된 수주일 ({tasks.length}개)</h3>
+        
+        {tasks.length === 0 ? (
+          <p className="empty-message">등록된 수주일이 없습니다.</p>
+        ) : (
+          <div className="task-items">
+            {tasks.map((task) => (
+              <div key={task.id} className="task-item">
+                <div className="task-info">
+                  <span className="task-date">{task.date}</span>
+                  {task.name && <span className="task-name">{task.name}</span>}
+                </div>
+                <button
+                  onClick={() => handleDeleteTask(task.id, task.date)}
+                  className="task-delete-btn"
+                  aria-label="삭제"
+                  title="삭제"
+                />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* 저장소 정보 */}
       {storageInfo && (

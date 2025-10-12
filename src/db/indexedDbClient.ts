@@ -1,6 +1,6 @@
 import { openDB } from 'idb';
 import type { DBSchema, IDBPDatabase } from 'idb';
-import type { Train, Checkin, Photo } from '../types';
+import type { Train, Checkin, Photo, Task } from '../types';
 
 // IndexedDB 스키마 정의
 interface SubwayTrackerDB extends DBSchema {
@@ -9,10 +9,15 @@ interface SubwayTrackerDB extends DBSchema {
     value: Train;
     indexes: { 'by-createdAt': number };
   };
+  tasks: {
+    key: string;
+    value: Task;
+    indexes: { 'by-date': string; 'by-createdAt': number };
+  };
   checkins: {
     key: string;
     value: Checkin;
-    indexes: { 'by-timestamp': number; 'by-trainId': string };
+    indexes: { 'by-timestamp': number; 'by-trainId': string; 'by-taskId': string };
   };
   photos: {
     key: string;
@@ -22,7 +27,7 @@ interface SubwayTrackerDB extends DBSchema {
 }
 
 const DB_NAME = 'subway-tracker-db';
-const DB_VERSION = 1;
+const DB_VERSION = 2; // 스키마 변경으로 버전 업
 
 let dbInstance: IDBPDatabase<SubwayTrackerDB> | null = null;
 
@@ -38,11 +43,19 @@ export async function initDB(): Promise<IDBPDatabase<SubwayTrackerDB>> {
         trainStore.createIndex('by-createdAt', 'createdAt');
       }
 
+      // tasks 스토어 (v2에서 추가)
+      if (!db.objectStoreNames.contains('tasks')) {
+        const taskStore = db.createObjectStore('tasks', { keyPath: 'id' });
+        taskStore.createIndex('by-date', 'date');
+        taskStore.createIndex('by-createdAt', 'createdAt');
+      }
+
       // checkins 스토어
       if (!db.objectStoreNames.contains('checkins')) {
         const checkinStore = db.createObjectStore('checkins', { keyPath: 'id' });
         checkinStore.createIndex('by-timestamp', 'timestamp');
         checkinStore.createIndex('by-trainId', 'trainId');
+        checkinStore.createIndex('by-taskId', 'taskId');
       }
 
       // photos 스토어
@@ -70,6 +83,34 @@ export async function getAllTrains(): Promise<Train[]> {
 export async function deleteTrain(trainId: string): Promise<void> {
   const db = await initDB();
   await db.delete('trains', trainId);
+}
+
+// ===== Task CRUD =====
+export async function addTask(task: Task): Promise<void> {
+  const db = await initDB();
+  await db.add('tasks', task);
+}
+
+export async function getAllTasks(): Promise<Task[]> {
+  const db = await initDB();
+  const tasks = await db.getAll('tasks');
+  // 날짜 역순으로 정렬 (최신순)
+  return tasks.sort((a, b) => b.date.localeCompare(a.date));
+}
+
+export async function getTaskById(taskId: string): Promise<Task | undefined> {
+  const db = await initDB();
+  return db.get('tasks', taskId);
+}
+
+export async function deleteTask(taskId: string): Promise<void> {
+  const db = await initDB();
+  await db.delete('tasks', taskId);
+}
+
+export async function getLatestTask(): Promise<Task | undefined> {
+  const tasks = await getAllTasks();
+  return tasks[0]; // 이미 날짜 역순으로 정렬되어 있음
 }
 
 // ===== Checkin CRUD =====

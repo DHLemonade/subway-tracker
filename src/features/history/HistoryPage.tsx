@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import type { Train, CheckinWithPhoto, Checkin, Platform } from '../../types';
-import { getAllCheckins, getAllTrains, deleteCheckin, getPhotoByCheckinId, deletePhoto, addCheckin, addTrain, updateCheckin } from '../../db/indexedDbClient';
+import type { Train, CheckinWithPhoto, Checkin, Platform, Task } from '../../types';
+import { getAllCheckins, getAllTrains, deleteCheckin, getPhotoByCheckinId, deletePhoto, addCheckin, addTrain, updateCheckin, getAllTasks } from '../../db/indexedDbClient';
 import { formatDateTime, formatDate, blobToDataURL } from '../../utils/helpers';
 import { exportCheckinsToText, exportCheckinsToReadableText, parseImportText, copyToClipboard, shareViaKakao, downloadAsFile } from '../../utils/exportImport';
 import { CalendarView } from '../../components/CalendarView';
@@ -11,9 +11,11 @@ type ViewMode = 'list' | 'calendar';
 export function HistoryPage() {
   const [checkins, setCheckins] = useState<CheckinWithPhoto[]>([]);
   const [trains, setTrains] = useState<Train[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [selectedCheckin, setSelectedCheckin] = useState<CheckinWithPhoto | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [filterTrainId, setFilterTrainId] = useState<string>('');
+  const [filterTaskId, setFilterTaskId] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
   const [showExportModal, setShowExportModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
@@ -50,9 +52,10 @@ export function HistoryPage() {
   async function loadData() {
     setIsLoading(true);
     try {
-      const [checkinList, trainList] = await Promise.all([
+      const [checkinList, trainList, taskList] = await Promise.all([
         getAllCheckins(),
         getAllTrains(),
+        getAllTasks(),
       ]);
 
       // 열차 정보를 맵으로 변환
@@ -66,6 +69,7 @@ export function HistoryPage() {
 
       setCheckins(checkinsWithTrain);
       setTrains(trainList);
+      setTasks(taskList);
     } catch (error) {
       console.error('데이터 로드 실패:', error);
     } finally {
@@ -266,9 +270,41 @@ export function HistoryPage() {
     }
   }
 
-  const filteredCheckins = filterTrainId
-    ? checkins.filter((c) => c.trainId === filterTrainId)
-    : checkins;
+  const filteredCheckins = checkins
+    .filter((c) => !filterTrainId || c.trainId === filterTrainId)
+    .filter((c) => !filterTaskId || c.taskId === filterTaskId);
+
+  // 수주일별 완료 현황 계산
+  const taskCompletionStatus = filterTaskId && tasks.length > 0
+    ? (() => {
+        const selectedTask = tasks.find(t => t.id === filterTaskId);
+        if (!selectedTask) return null;
+        
+        const taskCheckins = checkins.filter(c => c.taskId === filterTaskId);
+        const completedTrains = new Set(taskCheckins.map(c => c.trainId));
+        
+        // 열차별 체크인 정보 매핑 (가장 최근 체크인)
+        const trainCheckinMap = new Map<string, CheckinWithPhoto>();
+        taskCheckins.forEach(checkin => {
+          const existing = trainCheckinMap.get(checkin.trainId);
+          if (!existing || checkin.timestamp > existing.timestamp) {
+            trainCheckinMap.set(checkin.trainId, checkin);
+          }
+        });
+        
+        const totalTrains = trains.length;
+        const completedCount = completedTrains.size;
+        
+        return {
+          task: selectedTask,
+          completedTrains,
+          trainCheckinMap,
+          completedCount,
+          totalTrains,
+          percentage: totalTrains > 0 ? Math.round((completedCount / totalTrains) * 100) : 0
+        };
+      })()
+    : null;
 
   if (isLoading) {
     return <div className="history-page loading">로딩 중...</div>;
@@ -301,20 +337,87 @@ export function HistoryPage() {
 
       {/* 필터 */}
       <div className="filter-section">
-        <label>열차 필터:</label>
-        <select
-          value={filterTrainId}
-          onChange={(e) => setFilterTrainId(e.target.value)}
-          className="filter-select"
-        >
-          <option value="">전체</option>
-          {trains.map((train) => (
-            <option key={train.id} value={train.id}>
-              {train.id}
-            </option>
-          ))}
-        </select>
+        <div className="filter-group">
+          <label>수주일:</label>
+          <select
+            value={filterTaskId}
+            onChange={(e) => setFilterTaskId(e.target.value)}
+            className="filter-select"
+          >
+            <option value="">전체</option>
+            {tasks.map((task) => (
+              <option key={task.id} value={task.id}>
+                {task.date} {task.name && `- ${task.name}`}
+              </option>
+            ))}
+          </select>
+        </div>
+        
+        <div className="filter-group">
+          <label>열차:</label>
+          <select
+            value={filterTrainId}
+            onChange={(e) => setFilterTrainId(e.target.value)}
+            className="filter-select"
+          >
+            <option value="">전체</option>
+            {trains.map((train) => (
+              <option key={train.id} value={train.id}>
+                {train.id}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
+
+      {/* 수주일별 완료 현황 */}
+      {taskCompletionStatus && (
+        <div className="task-completion-section">
+          <h2>📊 작업 진행 현황</h2>
+          <div className="completion-summary">
+            <div className="completion-info">
+              <span className="task-date">{taskCompletionStatus.task.date}</span>
+              {taskCompletionStatus.task.name && (
+                <span className="task-name">- {taskCompletionStatus.task.name}</span>
+              )}
+            </div>
+            <div className="completion-stats">
+              <div className="stat-item">
+                <span className="stat-label">완료</span>
+                <span className="stat-value">
+                  {taskCompletionStatus.completedCount} / {taskCompletionStatus.totalTrains}
+                </span>
+              </div>
+              <div className="stat-item">
+                <span className="stat-label">진행률</span>
+                <span className="stat-value">{taskCompletionStatus.percentage}%</span>
+              </div>
+            </div>
+          </div>
+          
+          <div className="train-checklist">
+            {trains.map((train) => {
+              const isCompleted = taskCompletionStatus.completedTrains.has(train.id);
+              const checkin = taskCompletionStatus.trainCheckinMap.get(train.id);
+              
+              return (
+                <div 
+                  key={train.id} 
+                  className={`train-check-item ${isCompleted ? 'completed' : ''} ${isCompleted ? 'clickable' : ''}`}
+                  onClick={() => {
+                    if (isCompleted && checkin) {
+                      setSelectedCheckin(checkin);
+                    }
+                  }}
+                >
+                  <span className="check-icon">{isCompleted ? '✅' : '⬜️'}</span>
+                  <span className="train-number">{train.id}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* 내보내기/가져오기 버튼 */}
       <div className="export-import-section">
@@ -393,6 +496,19 @@ export function HistoryPage() {
                 <strong>일시:</strong>
                 <span>{formatDateTime(selectedCheckin.timestamp)}</span>
               </div>
+              
+              {selectedCheckin.taskId && (
+                <div className="detail-row">
+                  <strong>수주일:</strong>
+                  <span>
+                    {(() => {
+                      const task = tasks.find(t => t.id === selectedCheckin.taskId);
+                      if (!task) return '알 수 없음';
+                      return `${task.date}${task.name ? ` - ${task.name}` : ''}`;
+                    })()}
+                  </span>
+                </div>
+              )}
               
               {selectedCheckin.notes && (
                 <div className="detail-row notes">

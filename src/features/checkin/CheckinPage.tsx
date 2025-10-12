@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import type { Train, Platform, Checkin } from '../../types';
-import { getAllTrains, addCheckin, addPhoto } from '../../db/indexedDbClient';
+import type { Train, Platform, Checkin, Task } from '../../types';
+import { getAllTrains, addCheckin, addPhoto, getAllTasks, getLatestTask } from '../../db/indexedDbClient';
 import { generateId, formatDate, compressImage, formatFileSize } from '../../utils/helpers';
 import './CheckinPage.css';
 
@@ -12,9 +12,14 @@ export function CheckinPage() {
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string>(formatDate(Date.now()));
+  
+  // 수주일 관리
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [selectedTaskId, setSelectedTaskId] = useState<string>('');
 
   useEffect(() => {
     loadTrains();
+    loadTasks();
   }, []);
 
   async function loadTrains() {
@@ -28,6 +33,19 @@ export function CheckinPage() {
     setTrains(sortedTrains);
     if (sortedTrains.length > 0 && !selectedTrainId) {
       setSelectedTrainId(sortedTrains[0].id);
+    }
+  }
+
+  async function loadTasks() {
+    const taskList = await getAllTasks();
+    setTasks(taskList);
+    
+    // 최신 수주일을 기본값으로 설정
+    if (taskList.length > 0 && !selectedTaskId) {
+      const latestTask = await getLatestTask();
+      if (latestTask) {
+        setSelectedTaskId(latestTask.id);
+      }
     }
   }
 
@@ -67,6 +85,7 @@ export function CheckinPage() {
         timestamp: checkinTimestamp,
         notes,
         photoKey: photoFile ? generateId() : undefined,
+        taskId: selectedTaskId || undefined,
         createdAt: now,
       };
 
@@ -122,6 +141,27 @@ export function CheckinPage() {
       <h1>체크인</h1>
       
       <form onSubmit={handleSubmit} className="checkin-form">
+        <div className="form-group">
+          <label>수주일</label>
+          {tasks.length === 0 ? (
+            <div className="no-tasks-warning">
+              ⚠️ 설정에서 수주일을 먼저 등록해주세요
+            </div>
+          ) : (
+            <select 
+              value={selectedTaskId} 
+              onChange={(e) => setSelectedTaskId(e.target.value)}
+              className="task-select"
+            >
+              {tasks.map(task => (
+                <option key={task.id} value={task.id}>
+                  {task.date} {task.name && `- ${task.name}`}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
+
         <div className="form-group">
           <label>날짜</label>
           <input
