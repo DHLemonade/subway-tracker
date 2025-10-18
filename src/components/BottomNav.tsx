@@ -5,8 +5,8 @@ export function BottomNav() {
   const location = useLocation();
 
   const navItems = [
-    { path: '/', label: '체크인', icon: '✓' },
-    { path: '/history', label: '히스토리', icon: '📋' },
+    { path: '/checkin', label: '체크인', icon: '✓' },
+    { path: '/', label: '히스토리', icon: '📋' },
     { path: '/trains', label: '설정', icon: '⚙️' },
   ];
 

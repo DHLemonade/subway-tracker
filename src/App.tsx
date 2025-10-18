@@ -13,8 +13,8 @@ function App() {
         <OnlineStatus />
         <main className="main-content">
           <Routes>
-            <Route path="/" element={<CheckinPage />} />
-            <Route path="/history" element={<HistoryPage />} />
+            <Route path="/" element={<HistoryPage />} />
+            <Route path="/checkin" element={<CheckinPage />} />
             <Route path="/trains" element={<TrainsPage />} />
           </Routes>
         </main>
